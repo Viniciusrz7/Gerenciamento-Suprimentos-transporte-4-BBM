@@ -1,0 +1,1881 @@
+Preciso de um sistema para gerenciamento de suprimentos/frota do 4º BBM de juiz de fora, esse sistema vai ser desktop vai usar java swing ou seja não é web mas todos que está na sessão de suprimentos pode usar em diferentes computadores com o mesmo banco de dados, esse sistema vai ter a parte de transporte que controla revisão de viatura, vai ter as seguintes colunas Prefixo da viatura,placa,modelo,sede/fração,km,situação, onde foi feito a ultima, tempo de garantia, o que foi feito na revisão, além disso o sistema vai ter outra área onde mostra troca de óleos ae vai mostrar quando foi feita a ultima troca de óleo tem as colunas placa/prefixo data km da ultima troca de óleo e filtros e observação, o sistema vai ter também controle dos serviços que as viaturas fez com as seguintes colunas, viatura,problema apresentado, data, km,local de conserto e status, o sistema vai ter também gerenciamento de acidentes de viaturas vai ter as seguintes colunas, data do acidente,viatura,modelo,parte prejudicada, local, reds, sei, status(andamento),o sistema vai ter também um controle de pneus onde mostra os pneus que esta em estoque medida do pneu,quantidade e dot(vencimento), além disso vai ter o controle de pneus onde mostra todos os pneus de todas as viaturas, viatura prefixo tal, localização, dot(vencimento),medidas,situação, além disso vai ter outra parte no sistema de controle de baterias, viatura prefixo tal , bateria tal, tempo de garantia, observação, além disso o sistema vai ter outra parte sobre controle de seis relacionados as viaturas que ae já é viaturas de descargas, viatura prefixo tal, numero do sei, situação, vai ter também outra parte do sistema a parte dos cartões de abastecimento, quais cartões coringas tem se ta vinculado a alguma viatura se não tiver quais não estão vinculados.Além disso tem que mostrar todas as viaturas da sede,dos pelotões,as baixadas, as de descargas, as disponíveis,sede é em juiz de fora 4bbm,tem viatura em pemad,3cia pv,6 pelsul,uba,muriae,além paraiba,Cataguases e COB.
+
+
+Além dessa parte de viaturas tem a parte de suprimentos convênios,doações,colaborações... nessa parte do sistema separado também vai ter um controle dos termos convênios em fim quais convênios tem se já venceu data que vai vencer quando foi celebrado,teria que ter numero do convenio,participe,tipo,objeto,recurso,benefícios,valor, inicio,termino, situação,termos aditivos celebrados, numero de processo sei, informações adicionais. Os que a gente ainda ta fazendo nos processos SEI que não esta em vigor tinha que tem ter, processo, numero do sei, numero da parceria, situação, além disso tem que ter outra parte no sistema para a parte de doações que o bombeiro recebe, situação do processo de doação, o que recebeu (nome,quantidade), de quem recebeu, numero do sei, situação.
+
+
+Quando estiver faltando 4 meses para vencer o convenio tem que mostrar a data com cor amarelo ou algo dando uma atenção informando que vai vencer,
+As tecnologias que tem que ser utilizadas são Java swing, uma estilização bacana, banco de dados sqlite local, e o mysql para que todos os computadores tenham acesso ao sistema, mas primeiro o meu com sqlite,ORM tem que ter para criar as tabelas sozinho ao modificar o código as entidades,bcript para a senha,validações de campos, tem campos que tem que ser obrigatórios,outros não ae você ve pela logica, se for possível adicionar gráficos analisticos referente a isso.Arquitetura MVC, modelo de código abaixo, bem SOLID, com desenvolvimento em TDD, cada classe e métodos com sua responsabilidade, padrão fácil de manutenção de codigo ->
+
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package Banco;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ *
+ * @author VINIR
+ */
+public class ConnectionFactory {
+  public static Connection getConnection()throws ClassNotFoundException,SQLException{
+   //try{
+       Class.forName("com.mysql.cj.jdbc.Driver");
+      return DriverManager.getConnection("jdbc:mysql://localhost:3306/TrabalhoJava","root","1234");
+       
+  // }catch(ClassNotFoundException ex){
+     //  System.out.println("Drive Não encontrado!!");
+  // }
+  // try{
+  // }catch(SQLException ex){
+   //    System.out.println("Erro ao encontrar banco");
+  // }
+  // return null;
+  }
+  public static void main(String[] args) throws SQLException  {
+       Connection c;
+       try{
+           c=ConnectionFactory.getConnection();
+       }catch(ClassNotFoundException ex){
+           System.out.println("Driver Nao encontrado");
+       }catch(SQLException ex){
+            System.out.println("Erro no banco");
+       }
+      
+  }
+}
+package Dao;
+
+import Model.Usuario;
+import java.sql.SQLException;
+import java.util.ArrayList;
+
+public interface IGenericsDao<C, K> {
+
+    public void inserir(C obj) throws ClassNotFoundException, SQLException;
+
+    public void alterar(C obj) throws ClassNotFoundException, SQLException;
+
+    public void apagar(K obj) throws ClassNotFoundException, SQLException;
+
+    public C buscarPorChave(K obj) throws ClassNotFoundException, SQLException;
+
+    public ArrayList<C> buscarTodos() throws ClassNotFoundException, SQLException;
+
+    public int quantidade() throws ClassNotFoundException, SQLException;
+
+}
+    package Daoimpl;
+
+    import Banco.ConnectionFactory;
+    import Dao.IGenericsDao;
+    import Model.Administrador;
+    import java.sql.Connection;
+    import java.sql.PreparedStatement;
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    import java.util.ArrayList;
+
+    public class AdministradorDao implements IGenericsDao<Administrador, Integer> {
+
+        public void inserir(Administrador admin) throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "INSERT INTO administrador (nome, login, senha) VALUES (?, ?, md5(?));";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+
+            pst.setString(1, admin.getNome());
+            pst.setString(2, admin.getLogin());
+            pst.setString(3, admin.getSenha());
+
+            // 4 passo - executar o comando
+            pst.execute();
+
+            
+        }
+
+        @Override
+        public void alterar(Administrador admin) throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "UPDATE administrador SET nome=?, login=?, senha=md5(?) WHERE idAdministrador=?;";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+
+            pst.setString(1, admin.getNome());
+            pst.setString(2, admin.getLogin());
+            pst.setString(3, admin.getSenha());
+            pst.setInt(4, admin.getId());
+            // 4 passo - executar o comando
+            pst.execute();
+
+            
+        }
+
+        @Override
+        public void apagar(Integer key) throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "DELETE FROM administrador WHERE idAdministrador=?;";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+            pst.setInt(1, key);
+
+            // 4 passo - executar o comando
+            pst.execute();
+
+           
+        }
+
+        @Override
+        public Administrador buscarPorChave(Integer key) throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "SELECT idAdministrador, nome, login, senha FROM administrador WHERE idAdministrador=?;";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+            pst.setInt(1, key);
+
+            // 4 passo - executar o comando
+            ResultSet rs = pst.executeQuery();
+
+            // 5 passo - pegar o resultado da consulta e jogar para um objeto
+            Administrador admin = null;
+            if (rs.next()) {
+                admin = new Administrador(rs.getInt("idAdministrador"),
+                        rs.getString("nome"),
+                        rs.getString("login"),
+                        rs.getString("senha"));
+            }
+
+           
+
+            return admin;
+        }
+
+        @Override
+        public ArrayList<Administrador> buscarTodos() throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "SELECT idAdministrador, nome, login, senha FROM administrador;";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+
+            // 4 passo - executar o comando
+            ResultSet rs = pst.executeQuery();
+
+            // 5 passo - pegar o resultado da consulta e jogar para um objeto
+            ArrayList<Administrador> lista = new ArrayList<>();
+            while (rs.next()) {
+                Administrador admin = new Administrador(rs.getInt("idAdministrador"),
+                        rs.getString("nome"),
+                        rs.getString("login"),
+                        rs.getString("senha"));
+                lista.add(admin);
+            }
+
+            
+
+            return lista;
+
+        }
+
+        public int quantidade() throws ClassNotFoundException, SQLException {
+            // 1 passo - conexão
+            Connection c = ConnectionFactory.getConnection();
+
+            // 2 passo - preparar comando
+            String sql = "SELECT COUNT(*) AS total FROM administrador;";
+
+            // 3 passo - preparar execução
+            PreparedStatement pst = c.prepareStatement(sql);
+
+            // 4 passo - executar o comando
+            ResultSet rs = pst.executeQuery();
+
+            // 5 passo - pegar o resultado da consulta
+            int total = 0;
+            if (rs.next()) {
+                total = rs.getInt(1);
+            }
+
+         
+
+            return total;
+        }
+    }
+package Daoimpl;
+
+import Banco.ConnectionFactory;
+import Dao.IGenericsDao;
+import Model.Motorista; 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+
+public class MotoristaDao implements IGenericsDao<Motorista, Integer> {
+
+    @Override
+    public void inserir(Motorista motorista) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "INSERT INTO motorista (nome, login, senha, veiculo, disponibilidade,localizacaoatual) VALUES (?, ?, md5(?), ?, ?,?);";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        pst.setString(1, motorista.getNome());
+        pst.setString(2, motorista.getLogin());
+        pst.setString(3, motorista.getSenha());
+        pst.setString(4, motorista.getVeiculo());
+        pst.setBoolean(5, motorista.isDisponibilidade());
+        pst.setString(6, motorista.getLocalizacaoatual());
+        // 4 passo - executar o comando
+        pst.execute();
+
+        
+    }
+
+    @Override
+    public void alterar(Motorista motorista) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "UPDATE motorista SET nome=?, login=?, senha=md5(?), veiculo=?, disponibilidade=?,localizacaoatual=?,WHERE idMotorista=?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        pst.setString(1, motorista.getNome());
+        pst.setString(2, motorista.getLogin());
+        pst.setString(3, motorista.getSenha());
+        pst.setString(4, motorista.getVeiculo());
+        pst.setBoolean(5, motorista.isDisponibilidade());
+        pst.setString(6, motorista.getLocalizacaoatual());
+        pst.setInt(7, motorista.getId()); // Supondo que Motorista tenha um método getId()
+
+        // 4 passo - executar o comando
+        pst.execute();
+
+       
+    }
+
+    @Override
+    public void apagar(Integer key) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "DELETE FROM motorista WHERE idMotorista=?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+        pst.setInt(1, key);
+
+        // 4 passo - executar o comando
+        pst.execute();
+
+        
+    }
+
+    @Override
+    public Motorista buscarPorChave(Integer key) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "SELECT idMotorista, nome, login, senha, veiculo, disponibilidade,localizacaoatual FROM motorista WHERE idMotorista=?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+        pst.setInt(1, key);
+
+        // 4 passo - executar o comando
+        ResultSet rs = pst.executeQuery();
+
+        // 5 passo - pegar o resultado da consulta e jogar para um objeto
+        Motorista motorista = null;
+        if (rs.next()) {
+            motorista = new Motorista(rs.getInt("idMotorista"),
+                    rs.getString("nome"),
+                    rs.getString("login"),
+                    rs.getString("senha"),
+                    rs.getString("veiculo"),
+                    rs.getBoolean("disponibilidade"));
+            rs.getString("localizacaoatual");
+        }
+
+       
+
+        return motorista;
+    }
+
+    @Override
+    public ArrayList<Motorista> buscarTodos() throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "SELECT idMotorista, nome, login, senha, veiculo, disponibilidade,localizacaoatual FROM motorista;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        // 4 passo - executar o comando
+        ResultSet rs = pst.executeQuery();
+
+        // 5 passo - criar lista para armazenar os motoristas
+        ArrayList<Motorista> motoristas = new ArrayList<>();
+        while (rs.next()) {
+            Motorista motorista = new Motorista(rs.getInt("idMotorista"),
+                    rs.getString("nome"),
+                    rs.getString("login"),
+                    rs.getString("senha"),
+                    rs.getString("veiculo"),
+                    rs.getBoolean("disponibilidade"));
+            rs.getString("localizacaoatual");
+            motoristas.add(motorista);
+        }
+
+      
+
+        return motoristas;
+    }
+
+    public int quantidade() throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        // 2 passo - preparar comando
+        String sql = "SELECT COUNT(*) AS total FROM motorista;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        // 4 passo - executar o comando
+        ResultSet rs = pst.executeQuery();
+
+        // 5 passo - pegar o resultado da consulta
+        int total = 0;
+        if (rs.next()) {
+            total = rs.getInt(1);
+        }
+
+      
+
+        return total;
+    }
+}
+package Daoimpl;
+
+import Banco.ConnectionFactory;
+import Dao.IGenericsDao;
+import Model.Usuario;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class UsuarioDao implements IGenericsDao<Usuario, Integer> {
+
+    public void inserir(Usuario user) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        //2 passo - preparar comando
+        String sql = "INSERT INTO usuario\n"
+                + "(nome,login,ultimoacesso,senha)\n"
+                + "VALUES\n"
+                + "(?,?,?,md5(?));";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        pst.setString(1, user.getNome());
+        pst.setString(2, user.getLogin());
+        pst.setObject(3, user.getUltimoAcesso());
+        pst.setString(4, user.getSenha());
+
+        // 4 passo - executar o comando
+        pst.execute();
+    }
+
+    @Override
+    public void alterar(Usuario user) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        //2 passo - preparar comando
+        String sql = "UPDATE usuario\n"
+                + "SET\n"
+                + "nome=?,\n"
+                + "login=?,\n"
+                + "ultimoacesso=?,\n"
+                + "senha=md5(?),\n"
+                + "WHERE idUsuario= ?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        pst.setString(1, user.getNome());
+        pst.setString(2, user.getLogin());
+        pst.setObject(3, user.getUltimoAcesso());
+        pst.setString(4, user.getSenha());
+        pst.setInt(5, user.getId());
+
+        // 4 passo - executar o comando
+        pst.execute();
+    }
+
+    @Override
+    public void apagar(Integer key) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        //2 passo - preparar comando
+        String sql = "DELETE FROM usuario\n"
+                + "WHERE id= ?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+        pst.setInt(1, key);
+
+        // 4 passo - executar o comando
+        pst.execute();
+    }
+
+    @Override
+    public Usuario buscarPorChave(Integer key) throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        //2 passo - preparar comando
+        String sql = "SELECT idUsuario,nome,login,ultimoacesso,senha\n"
+                + "FROM usuario\n"
+                + "WHERE id= ?;";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+        pst.setInt(1, key);
+
+        // 4 passo - executar o comando
+        ResultSet rs = pst.executeQuery();
+
+        // 5 passo - pegar o resultado da consulta e jogar para um objeto
+        Usuario u = null;
+        if (rs.next()) {
+            u = new Usuario(rs.getInt(1),
+                    rs.getString("nome"),
+                    rs.getString("login"),
+                    rs.getObject("ultimoacesso", LocalDateTime.class),
+                    rs.getString("senha"));
+            return u;
+        } else {
+            return u;
+        }
+    }
+
+    @Override
+    public ArrayList<Usuario> buscarTodos() throws ClassNotFoundException, SQLException {
+        // 1 passo - conexão
+        Connection c = ConnectionFactory.getConnection();
+
+        //2 passo - preparar comando
+        String sql = "SELECT idUsuario,nome,login,ultimoacesso,senha\n"
+                + "FROM usuario";
+
+        // 3 passo - preparar execução
+        PreparedStatement pst = c.prepareStatement(sql);
+
+        // 4 passo - executar o comando
+        ResultSet rs = pst.executeQuery();
+
+        // 5 passo - pegar o resultado da consulta e jogar para um objeto
+        ArrayList<Usuario> lista = new ArrayList<>();
+        while (rs.next()) {
+            Usuario u = new Usuario(rs.getInt(1),
+                    rs.getString("nome"),
+                    rs.getString("login"),
+                    rs.getObject("ultimoacesso", LocalDateTime.class),
+                    rs.getString("senha"));
+            lista.add(u);
+        }
+        return lista;
+    }
+
+    @Override
+    public int quantidade() throws ClassNotFoundException, SQLException {
+      // 1 passo - conexão
+    Connection c = ConnectionFactory.getConnection();
+
+    // 2 passo - preparar comando
+    String sql = "SELECT COUNT(*) FROM usuario";
+
+    // 3 passo - preparar execução
+    PreparedStatement pst = c.prepareStatement(sql);
+
+    // 4 passo - executar o comando
+    ResultSet rs = pst.executeQuery();
+
+    // 5 passo - pegar o resultado da consulta
+    int quantidade = 0;
+    if (rs.next()) {
+        quantidade = rs.getInt(1);
+    }
+    
+   
+
+    return quantidade;
+    }
+
+    /*public static void main(String[] args) {
+        Usuario u = new Usuario("Leo", "joao", LocalDateTime.now(), "1234");
+        try {
+            new UsuarioDao().inserir(u);
+        } catch (ClassNotFoundException | SQLException ex) {
+            System.out.println("Erro ao gravar" + ex.getMessage());
+        }
+    }
+*/
+     public Usuario buscarPorLoginESenha(String login, String senha) throws ClassNotFoundException, SQLException {
+    // 1 passo - conexão
+    Connection c = ConnectionFactory.getConnection();
+
+    // 2 passo - preparar comando
+    String sql = "SELECT idUsuario, nome, login, ultimoacesso, senha\n"
+                + "FROM usuario\n"
+                + "WHERE login = ? AND senha = md5(?);";
+
+    // 3 passo - preparar execução
+    PreparedStatement pst = c.prepareStatement(sql);
+    pst.setString(1, login);
+    pst.setString(2, senha);
+
+    // 4 passo - executar o comando
+    ResultSet rs = pst.executeQuery();
+
+    // 5 passo - pegar o resultado da consulta e jogar para um objeto
+    Usuario u = null;
+    if (rs.next()) {
+        u = new Usuario(rs.getInt(1),
+                rs.getString("nome"),
+                rs.getString("login"),
+                rs.getObject("ultimoacesso", LocalDateTime.class),
+                rs.getString("senha"));
+    }
+
+    return u;
+}
+}
+package Model;
+
+import java.time.LocalDateTime;
+
+public class Administrador extends Usuario {
+
+    private int idAdministrador;
+
+    public Administrador(String nome, String login, String senha) {
+
+        super(nome, login, LocalDateTime.now(), senha);
+    }
+
+    public Administrador(int idAdministrador, String nome, String login, String senha) {
+
+        super(nome, login, LocalDateTime.now(), senha);
+        this.idAdministrador = idAdministrador;
+    }
+
+    public int getIdAdministrador() {
+        return idAdministrador;
+    }
+
+    public void setIdAdministrador(int idAdministrador) {
+        this.idAdministrador = idAdministrador;
+    }
+}
+package Model;
+
+import java.time.LocalDateTime;
+
+public class Entrega {
+
+    private int idEntrega;
+    private String produto;
+    private String destino;
+    private String observacoes;
+    private String status;
+    private String localizacaoAtual;
+    private double preco;
+    private LocalDateTime prazo;
+
+    public Entrega(String produto, String destino, String observacoes, String status, String localizacaoAtual, double preco, LocalDateTime prazo) {
+        this.produto = produto;
+        this.destino = destino;
+        this.observacoes = observacoes;
+        this.status = status;
+        this.localizacaoAtual = localizacaoAtual;
+        this.preco = preco;
+        this.prazo = prazo;
+
+    }
+
+  
+    public Entrega(int idEntrega, String produto, String destino, String observacoes, String status, String localizacaoAtual, double preco, LocalDateTime prazo) {
+        this.idEntrega = idEntrega;
+        this.produto = produto;
+        this.destino = destino;
+        this.observacoes = observacoes;
+        this.status = status;
+        this.localizacaoAtual = localizacaoAtual;
+        this.preco = preco;
+        this.prazo = prazo;
+
+    }
+
+    public Entrega(int idEntrega, String produto, String status) {
+        this.idEntrega = idEntrega;
+        this.produto = produto;
+        this.status = status;
+
+    }
+
+    public Entrega(int idEntrega, String produto, String destino, String status) {
+        this.idEntrega = idEntrega;
+        this.produto = produto;
+        this.destino = destino;
+        this.status = status;
+
+    }
+
+    public int getIdEntrega() {
+        return idEntrega;
+    }
+
+    public void setIdEntrega(int idEntrega) {
+        this.idEntrega = idEntrega;
+    }
+
+    public String getProduto() {
+        return produto;
+    }
+
+    public void setProduto(String produto) {
+        this.produto = produto;
+    }
+
+    public String getDestino() {
+        return destino;
+    }
+
+    public void setDestino(String destino) {
+        this.destino = destino;
+    }
+
+    public String getObservacoes() {
+        return observacoes;
+    }
+
+    public void setObservacoes(String observacoes) {
+        this.observacoes = observacoes;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getLocalizacaoAtual() {
+        return localizacaoAtual;
+    }
+
+    public void setLocalizacaoAtual(String localizacaoAtual) {
+        this.localizacaoAtual = localizacaoAtual;
+    }
+
+    public double getPreco() {
+        return preco;
+    }
+
+    public void setPreco(double preco) {
+        this.preco = preco;
+    }
+
+    public LocalDateTime getPrazo() {
+        return prazo;
+    }
+
+    public void setPrazo(LocalDateTime prazo) {
+        this.prazo = prazo;
+    }
+
+}
+package Model;
+
+import java.time.LocalDateTime;
+
+public class Usuario {
+    private int id; 
+    private String nome;
+    private String login;
+    private LocalDateTime ultimoAcesso;
+
+    private String senha;
+
+    public Usuario(String nome, String login, LocalDateTime ultimoAcesso, String senha) {
+        
+        this.nome = nome;
+        this.login = login;
+        this.ultimoAcesso = ultimoAcesso;
+        this.senha = senha;
+    }
+     public Usuario(int id,String nome, String login, LocalDateTime ultimoAcesso, String senha) {
+        this.id=id;
+        this.nome = nome;
+        this.login = login;
+        this.ultimoAcesso = ultimoAcesso;
+        this.senha = senha;
+    }
+
+    // Getters
+    public int getId() {
+        return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getLogin() {
+        return login;
+    }
+
+    public LocalDateTime getUltimoAcesso() {
+        return ultimoAcesso;
+    }
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public void setLogin(String login) {
+        this.login = login;
+    }
+
+    public void setUltimoAcesso(LocalDateTime ultimoAcesso) {
+        this.ultimoAcesso = ultimoAcesso;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+}package Model;
+
+public class Produto {
+
+    private int idProduto;
+    private String nome;
+
+    private double valor;
+
+    public Produto(int idProduto, String nome,double valor) {
+        this.idProduto = idProduto;
+        this.nome = nome;
+        this.valor=valor;
+    }
+    public Produto(int idProduto, String nome) {
+        this.idProduto = idProduto;
+        this.nome = nome;
+      
+    }
+       public Produto( String nome,double valor) {
+        this.nome = nome;
+        this.valor=valor;
+    }
+    public double getValor() {
+        return valor;
+    }
+
+    public void setValor(double valor) {
+        this.valor = valor;
+    }
+
+    public int getIdProduto() {
+        return idProduto;
+    }
+
+    public void setIdProduto(int idProduto) {
+        this.idProduto = idProduto;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+}
+package Model;
+
+import Model.Entrega;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Cliente extends Usuario {
+    private int idcliente;
+    private String endereco;
+    private String produto;
+    private String telefone;
+    private ArrayList<Entrega> entregasSolicitadas;
+
+    public Cliente(String nome, String login, String senha, String endereco, String telefone) {
+        super(nome, login, LocalDateTime.now(), senha);
+        this.endereco = endereco;
+        this.telefone = telefone;
+        this.entregasSolicitadas = new ArrayList<>();
+    }
+
+    public Cliente(int idcliente, String nome, String login, String senha, String endereco, String telefone) {
+        super(nome, login, LocalDateTime.now(), senha);
+        this.idcliente = idcliente;
+        this.endereco = endereco;
+        this.telefone = telefone;
+        this.entregasSolicitadas = new ArrayList<>();
+    }
+
+    public int getIdcliente() {
+        return idcliente;
+    }
+
+    public void setIdcliente(int idcliente) {
+        this.idcliente = idcliente;
+    }
+
+    public String getEndereco() {
+        return endereco;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public List<Entrega> getEntregasSolicitadas() {
+        return entregasSolicitadas;
+    }
+}/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+package View;
+
+import Daoimpl.ProdutoDao;
+import Daoimpl.UsuarioDao;
+import Model.Produto;
+import Model.Usuario;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author VINIR
+ */
+public class CadastrarUsuarios extends javax.swing.JFrame {
+
+    /**
+     * Creates new form TelaCadastroProduto
+     */
+    public CadastrarUsuarios() {
+        initComponents();
+
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jtfNome = new javax.swing.JTextField();
+        jtfValor = new javax.swing.JTextField();
+        jButtonCadastrar = new javax.swing.JButton();
+        JButtonSair = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowOpened(java.awt.event.WindowEvent evt) {
+                formWindowOpened(evt);
+            }
+        });
+
+        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 24)); // NOI18N
+        jLabel1.setText("                  Novo Operador");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 388, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+
+        jLabel2.setText("login:");
+
+        jLabel3.setText("senha:");
+
+        jtfNome.setText("jTextField1");
+        jtfNome.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jtfNomeActionPerformed(evt);
+            }
+        });
+
+        jtfValor.setText("jTextField2");
+        jtfValor.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jtfValorActionPerformed(evt);
+            }
+        });
+
+        jButtonCadastrar.setBackground(new java.awt.Color(255, 255, 255));
+        jButtonCadastrar.setForeground(new java.awt.Color(0, 0, 0));
+        jButtonCadastrar.setText("Cadastrar Usuario");
+        jButtonCadastrar.setActionCommand("Cadastrar Usuario");
+        jButtonCadastrar.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+        jButtonCadastrar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonCadastrarActionPerformed(evt);
+            }
+        });
+
+        JButtonSair.setBackground(new java.awt.Color(255, 255, 255));
+        JButtonSair.setForeground(new java.awt.Color(0, 0, 0));
+        JButtonSair.setText("Sair");
+        JButtonSair.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+        JButtonSair.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                JButtonSairActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 0, 0)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jtfNome)
+                            .addComponent(jtfValor)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jButtonCadastrar)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(JButtonSair, javax.swing.GroupLayout.PREFERRED_SIZE, 77, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jtfNome, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(0, 0, 0)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jtfValor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButtonCadastrar)
+                    .addComponent(JButtonSair))
+                .addGap(0, 18, Short.MAX_VALUE))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jtfValorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jtfValorActionPerformed
+
+    }//GEN-LAST:event_jtfValorActionPerformed
+
+    private void jButtonCadastrarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCadastrarActionPerformed
+        try {
+
+            Usuario user = new Usuario(0, "", jtfNome.getText(), null, jtfValor.getText());
+            if (user == null) {
+                JOptionPane.showMessageDialog(this, "Valor incorreto. O valor não pode ser negativo.", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            new UsuarioDao().inserir(user);
+            JOptionPane.showMessageDialog(null, "Usuario cadastrado com sucesso");
+
+            setVisible(false);
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro inesperado: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_jButtonCadastrarActionPerformed
+
+    private void jtfNomeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jtfNomeActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jtfNomeActionPerformed
+
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
+        TelaLoginUsuario login = new TelaLoginUsuario(this, false);
+        login.setVisible(false);
+        userLogado = login.getUser();
+
+
+    }//GEN-LAST:event_formWindowOpened
+
+    private void JButtonSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_JButtonSairActionPerformed
+        System.exit(0);
+    }//GEN-LAST:event_JButtonSairActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(CadastrarUsuarios.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(CadastrarUsuarios.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(CadastrarUsuarios.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(CadastrarUsuarios.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+        //</editor-fold>
+        //</editor-fold>
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new CadastrarUsuarios().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton JButtonSair;
+    private javax.swing.JButton jButtonCadastrar;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JTextField jtfNome;
+    private javax.swing.JTextField jtfValor;
+    // End of variables declaration//GEN-END:variables
+private Usuario userLogado;
+}
+                                                                                                                                                                             /*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JDialog.java to edit this template
+ */
+package View;
+
+import Daoimpl.UsuarioDao;
+import Model.Usuario;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author VINIR
+ */
+public class TelaLoginUsuario extends javax.swing.JDialog {
+
+    /**
+     * Creates new form TelaLoginUsuario
+     */
+    public TelaLoginUsuario(java.awt.Frame parent, boolean modal) {
+        super(parent, modal);
+        initComponents();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jDialog1 = new javax.swing.JDialog();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jtfLogin = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        jtfSenha = new javax.swing.JPasswordField();
+        jButton1 = new javax.swing.JButton();
+        jbtnSair = new javax.swing.JButton();
+
+        javax.swing.GroupLayout jDialog1Layout = new javax.swing.GroupLayout(jDialog1.getContentPane());
+        jDialog1.getContentPane().setLayout(jDialog1Layout);
+        jDialog1Layout.setHorizontalGroup(
+            jDialog1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 400, Short.MAX_VALUE)
+        );
+        jDialog1Layout.setVerticalGroup(
+            jDialog1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 300, Short.MAX_VALUE)
+        );
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
+        jLabel1.setBackground(new java.awt.Color(255, 255, 255));
+        jLabel1.setForeground(new java.awt.Color(102, 204, 255));
+        jLabel1.setText("                   Coelho Rapido");
+
+        jLabel7.setIcon(new javax.swing.ImageIcon(getClass().getResource("/imagens/3316539_animal_coelho_rabbit_rabbits_icon (2).png"))); // NOI18N
+
+        jLabel5.setText("Login:");
+
+        jtfLogin.setText("jTextField1");
+
+        jLabel6.setText("Senha:");
+
+        jtfSenha.setText("jPasswordField1");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 58, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jtfLogin, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jtfSenha, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+            .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel5)
+                            .addComponent(jtfLogin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 15, Short.MAX_VALUE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel6)
+                            .addComponent(jtfSenha, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+        );
+
+        jButton1.setBackground(new java.awt.Color(255, 255, 255));
+        jButton1.setForeground(new java.awt.Color(0, 0, 0));
+        jButton1.setText("Logar");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                JbtnLogarActionPerformed(evt);
+            }
+        });
+
+        jbtnSair.setBackground(new java.awt.Color(255, 255, 255));
+        jbtnSair.setForeground(new java.awt.Color(0, 0, 0));
+        jbtnSair.setText("Sair");
+        jbtnSair.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jbtnSairActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addContainerGap())
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jbtnSair, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(25, 25, 25))))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addGap(7, 7, 7)
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jButton1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jbtnSair)
+                .addGap(0, 12, Short.MAX_VALUE))
+        );
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void JbtnLogarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_JbtnLogarActionPerformed
+        try {
+             user = new UsuarioDao().buscarPorLoginESenha(jtfLogin.getText(), jtfSenha.getText());
+
+            if (user == null) {
+                JOptionPane.showMessageDialog(null, "Login ou senha incorreta");
+                jtfLogin.setText("");
+                jtfSenha.setText("");
+                jtfLogin.requestFocus();
+            } else {
+                setVisible(false);
+            }
+        } catch (ClassNotFoundException | SQLException ex) {
+
+            JOptionPane.showMessageDialog(null, "não foi possivel acessar o banco");
+        }
+    }//GEN-LAST:event_JbtnLogarActionPerformed
+
+    private void jbtnSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbtnSairActionPerformed
+        System.exit(0);
+    }//GEN-LAST:event_jbtnSairActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(TelaLoginUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(TelaLoginUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(TelaLoginUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(TelaLoginUsuario.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the dialog */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                TelaLoginUsuario dialog = new TelaLoginUsuario(new javax.swing.JFrame(), true);
+                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        System.exit(0);
+                    }
+                });
+                dialog.setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton1;
+    private javax.swing.JDialog jDialog1;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JButton jbtnSair;
+    private javax.swing.JTextField jtfLogin;
+    private javax.swing.JPasswordField jtfSenha;
+    // End of variables declaration//GEN-END:variables
+private Usuario user;
+
+    public Usuario getUser() {
+        return user;
+    }
+
+}
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+package View;
+
+import Daoimpl.EntregaDao;
+import Daoimpl.EntregaDao2;
+import Model.Entrega;
+import Model.Usuario;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+
+
+public class TelaMotorista extends javax.swing.JFrame {
+
+    public TelaMotorista() {
+        initComponents();
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                formWindowOpened(e);
+            }
+        });
+    }
+
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jLabel1 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableListagem = new javax.swing.JTable();
+        jButtonAtualizarEntregas = new javax.swing.JButton();
+        jSair = new javax.swing.JButton();
+        jButtonFinalizarEntrega = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setBackground(new java.awt.Color(255, 255, 255));
+        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 36)); // NOI18N
+        jLabel1.setForeground(new java.awt.Color(51, 51, 255));
+        jLabel1.setText("   Acompanhamento de Entregas");
+
+        jLabel3.setText("Entregas Pendentes:");
+
+        jTableListagem.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "ID", "Produto", "Status", "Endereco"
+            }
+        ));
+        jScrollPane1.setViewportView(jTableListagem);
+
+        jButtonAtualizarEntregas.setBackground(new java.awt.Color(255, 255, 255));
+        jButtonAtualizarEntregas.setForeground(new java.awt.Color(0, 0, 0));
+        jButtonAtualizarEntregas.setText("Atualizar Entregas");
+        jButtonAtualizarEntregas.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonAtualizarEntregasActionPerformed(evt);
+            }
+        });
+
+        jSair.setBackground(new java.awt.Color(255, 255, 255));
+        jSair.setForeground(new java.awt.Color(0, 0, 0));
+        jSair.setText("Sair");
+        jSair.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jSairActionPerformed(evt);
+            }
+        });
+
+        jButtonFinalizarEntrega.setBackground(new java.awt.Color(255, 255, 255));
+        jButtonFinalizarEntrega.setForeground(new java.awt.Color(0, 0, 0));
+        jButtonFinalizarEntrega.setText("Finalizar Entrega");
+        jButtonFinalizarEntrega.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonFinalizarEntregaActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 115, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addContainerGap())
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addComponent(jSair))
+            .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jButtonAtualizarEntregas, javax.swing.GroupLayout.PREFERRED_SIZE, 174, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButtonFinalizarEntrega, javax.swing.GroupLayout.PREFERRED_SIZE, 174, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 65, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addComponent(jButtonAtualizarEntregas, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(3, 3, 3)
+                .addComponent(jButtonFinalizarEntrega, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel3)
+                .addGap(0, 0, 0)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 329, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jSair))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButtonAtualizarEntregasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonAtualizarEntregasActionPerformed
+        try {
+            entregas = new EntregaDao().buscarTodos();
+            preencheTable(entregas);
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(null, "Não foi possivel buscar as Entregas");
+        }
+    }//GEN-LAST:event_jButtonAtualizarEntregasActionPerformed
+
+    private void jSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jSairActionPerformed
+        System.exit(0);
+    }//GEN-LAST:event_jSairActionPerformed
+
+    private void jButtonFinalizarEntregaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonFinalizarEntregaActionPerformed
+        int selectedRow = jTableListagem.getSelectedRow();
+        if (selectedRow >= 0) {
+            // Pega o valor como String e converte para Integer
+            String idString = (String) jTableListagem.getValueAt(selectedRow, 0);
+            int idEntrega = Integer.parseInt(idString); // Converte a String para Integer
+
+            try {
+                // Atualiza o status da entrega para "Finalizado"
+                EntregaDao entregaDao = new EntregaDao();
+                entregaDao.alterarStatus(idEntrega, "Finalizado");
+
+                // Atualiza a tabela
+                entregas = entregaDao.buscarTodos(); // Recarrega todas as entregas
+                preencheTable(entregas);
+
+                JOptionPane.showMessageDialog(null, "Entrega finalizada com sucesso!");
+            } catch (ClassNotFoundException | SQLException ex) {
+                JOptionPane.showMessageDialog(null, "Erro ao finalizar a entrega: " + ex.getMessage());
+            }
+        } else {
+            JOptionPane.showMessageDialog(null, "Selecione uma entrega para finalizar.");
+        }
+    }//GEN-LAST:event_jButtonFinalizarEntregaActionPerformed
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {
+        TelaLoginUsuario login = new TelaLoginUsuario(this, true);
+        login.setVisible(true);
+        userLogado = login.getUser();
+    }
+
+    private void preencheTable(ArrayList<Entrega> entregas) {
+        DefaultTableModel dfte = (DefaultTableModel) jTableListagem.getModel();
+        while (dfte.getRowCount() > 0) {
+            dfte.removeRow(0);
+        }
+        for (Entrega e : entregas) {
+            String[] linha = {e.getIdEntrega() + "", e.getProduto(), e.getStatus(), e.getDestino()};
+            dfte.addRow(linha);
+
+        }
+    }
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(TelaMotorista.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(TelaMotorista.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(TelaMotorista.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(TelaMotorista.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new TelaMotorista().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButtonAtualizarEntregas;
+    private javax.swing.JButton jButtonFinalizarEntrega;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JButton jSair;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableListagem;
+    // End of variables declaration//GEN-END:variables
+private Usuario userLogado;
+    private ArrayList<Entrega> entregas;
+}
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+package View;
+
+import Daoimpl.EntregaDao;
+import Daoimpl.EntregaDao2;
+import Model.Entrega;
+import Model.Usuario;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+
+public class TelaAdministrador extends javax.swing.JFrame {
+
+    public TelaAdministrador() {
+        initComponents();
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                formWindowOpened(e);
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableListagem = new javax.swing.JTable();
+        jLabel3 = new javax.swing.JLabel();
+        jSair = new javax.swing.JButton();
+        jButtonVisualizarEntregas = new javax.swing.JButton();
+        jApagar = new javax.swing.JButton();
+        jtfCadastroProdutos1 = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setBackground(new java.awt.Color(255, 255, 255));
+        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 36)); // NOI18N
+        jLabel1.setForeground(new java.awt.Color(51, 51, 255));
+        jLabel1.setText("                                Administração");
+
+        jLabel2.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jLabel2.setText("Listagem de Entregas:");
+
+        jTableListagem.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null},
+                {null, null, null},
+                {null, null, null},
+                {null, null, null},
+                {null, null, null},
+                {null, null, null}
+            },
+            new String [] {
+                "ID", "Produto", "Status"
+            }
+        ));
+        jScrollPane1.setViewportView(jTableListagem);
+
+        jLabel3.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+
+        jSair.setBackground(new java.awt.Color(255, 255, 255));
+        jSair.setForeground(new java.awt.Color(0, 0, 0));
+        jSair.setText("Sair");
+        jSair.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jSairActionPerformed(evt);
+            }
+        });
+
+        jButtonVisualizarEntregas.setBackground(new java.awt.Color(255, 255, 255));
+        jButtonVisualizarEntregas.setForeground(new java.awt.Color(0, 0, 0));
+        jButtonVisualizarEntregas.setText("Visualizar Entregas");
+        jButtonVisualizarEntregas.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButonVisualizarEntrega(evt);
+            }
+        });
+
+        jApagar.setBackground(new java.awt.Color(255, 255, 255));
+        jApagar.setForeground(new java.awt.Color(0, 0, 0));
+        jApagar.setText("Apagar Entrega");
+        jApagar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jApagarActionPerformed(evt);
+            }
+        });
+
+        jtfCadastroProdutos1.setBackground(new java.awt.Color(255, 255, 255));
+        jtfCadastroProdutos1.setForeground(new java.awt.Color(0, 0, 0));
+        jtfCadastroProdutos1.setText("CadastrarUsuarios");
+        jtfCadastroProdutos1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jtfCadastroProdutos1ActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 879, Short.MAX_VALUE)
+                    .addComponent(jScrollPane1)
+                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(85, 85, 85)
+                        .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jButtonVisualizarEntregas)
+                            .addComponent(jApagar, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(222, 222, 222)
+                        .addComponent(jtfCadastroProdutos1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jSair)))
+                .addContainerGap())
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addComponent(jLabel3)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButtonVisualizarEntregas)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(0, 6, Short.MAX_VALUE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jSair)
+                            .addComponent(jtfCadastroProdutos1)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jApagar)
+                        .addGap(0, 0, Short.MAX_VALUE))))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButonVisualizarEntrega(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButonVisualizarEntrega
+        try {
+            entregas = new EntregaDao().buscarTodos();
+            preencheTable(entregas);
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(null, "Não foi possivel buscar as Entregas");
+        }
+    }//GEN-LAST:event_jButonVisualizarEntrega
+
+    private void jSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jSairActionPerformed
+        System.exit(0);
+    }//GEN-LAST:event_jSairActionPerformed
+
+    private void jApagarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jApagarActionPerformed
+        int row = jTableListagem.getSelectedRow();
+        if (row <= -1) {
+            JOptionPane.showMessageDialog(null, "selecione uma entrega correta");
+        } else {
+            // String nome=(String) jTableListagem.getValueAt(row, 1);
+            if (JOptionPane.showConfirmDialog(null, "Desaja apagar a Entrega " + entregas.get(row).getProduto() + "?", "Apagar a entrega", JOptionPane.YES_NO_OPTION)
+                    == JOptionPane.YES_OPTION) {
+                try {
+                    new EntregaDao().apagar(entregas.get(row).getIdEntrega());
+                    formWindowOpened(null);
+                } catch (ClassNotFoundException | SQLException ex) {
+                    JOptionPane.showMessageDialog(null, "Erro ao apagar");
+                }
+
+            }
+
+        }
+    }//GEN-LAST:event_jApagarActionPerformed
+
+    private void jtfCadastroProdutos1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jtfCadastroProdutos1ActionPerformed
+        CadastrarUsuarios cadastrar = new CadastrarUsuarios();
+        cadastrar.setVisible(true);
+    }//GEN-LAST:event_jtfCadastroProdutos1ActionPerformed
+
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {
+        TelaLoginUsuario login = new TelaLoginUsuario(this, true);
+        login.setVisible(true);
+        userLogado = login.getUser();
+    }
+
+    private void preencheTable(ArrayList<Entrega> entregas) {
+        DefaultTableModel dfte = (DefaultTableModel) jTableListagem.getModel();
+        while (dfte.getRowCount() > 0) {
+            dfte.removeRow(0);
+        }
+        for (Entrega e : entregas) {
+            String[] linha = {e.getIdEntrega() + "", e.getProduto(), e.getStatus()};
+            dfte.addRow(linha);
+
+        }
+    }
+
+    public static void main(String args[]) {
+
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new TelaAdministrador().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jApagar;
+    private javax.swing.JButton jButtonVisualizarEntregas;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JButton jSair;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableListagem;
+    private javax.swing.JButton jtfCadastroProdutos1;
+    // End of variables declaration//GEN-END:variables
+private Usuario userLogado;
+    private ArrayList<Entrega> entregas;
+}
+esse é o modelo de código mas pode colocar uma estilização melhor e ORM para facilitar a vida de não ter que ficar refatorando, se quiser criar testes com TDD acho interessante mas não possuo modelo de código para testes.
