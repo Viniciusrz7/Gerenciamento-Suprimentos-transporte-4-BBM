@@ -1,4 +1,0 @@
-Manifest-Version: 1.0
-Main-Class: com.bbm4.Main
-Class-Path: sqlite-jdbc-3.45.3.0.jar slf4j-stub.jar
-

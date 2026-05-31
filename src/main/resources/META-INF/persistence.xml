@@ -19,9 +19,14 @@
         <class>com.bbm4.model.Doacao</class>
         
         <properties>
-            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:bbm4.db"/>
-            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+            
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://10.15.82.36:3306/bbm4?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=America/Sao_Paulo&amp;characterEncoding=UTF-8"/>
+            <property name="jakarta.persistence.jdbc.user" value="admin_bombeiros"/>
+            <property name="jakarta.persistence.jdbc.password" value="Supri.4bbm"/>
+            
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+            
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.format_sql" value="true"/>

@@ -253,6 +253,10 @@ public class MainView extends JFrame {
             JButton btnSairAba = AppTheme.botaoDanger("Sair do Sistema");
             btnSairAba.addActionListener(ev -> System.exit(0));
             bar.add(btnSairAba);
+            JButton btnCsv=AppTheme.botaoSecundario("Exportar CSV");
+            btnCsv.setForeground(new Color(100,220,180));
+            btnCsv.addActionListener(ev->exportarCSV(tabela,"exportacao"));
+            bar.add(btnCsv);
         }
         p.add(bar,BorderLayout.SOUTH);
         return p;
@@ -1045,11 +1049,22 @@ public class MainView extends JFrame {
         final int[] dViaturas={vDisp,vBaixa,vDesc,vManut};
         final int[] dRevisoes={rOk,rProx,rVenc};
         final int[] dConvenios={cVig,cVenc,cAtenc};
-        final int[] dServicos={sConcl,sAnd,sAg};
-        final java.util.Map<String,Integer> dSede=porSede;
         final java.util.Map<String,Integer> dAcid=acidPorAno;
+        // Convenios ativos por participe (valor)
+        java.util.Map<String,Double> convValores=new java.util.LinkedHashMap<>();
+        for(Convenio cv:convenios){
+            if(cv.isVencido()) continue;
+            if(cv.getValor()==null||cv.getValor()<=0) continue;
+            String part=cv.getParticipe()!=null?cv.getParticipe():"Outros";
+            // Extrai cidade: remove "Prefeitura de ", "Prefeitura ", etc.
+            part=part.replaceAll("(?i)prefeitura\\s+(de\\s+|do\\s+|da\\s+)?","").trim();
+            if(part.length()>12) part=part.substring(0,11)+"..";
+            convValores.merge(part,cv.getValor(),Double::sum);
+        }
+        final java.util.Map<String,Double> dConvVal=convValores;
+        final java.util.Map<String,Integer> dSede=porSede;
 
-        // ---- Cards topo ----
+        final int[] dServicos={sConcl,sAnd,sAg};
         JPanel cards = new JPanel(new GridLayout(1,7,10,0)); cards.setOpaque(false);
         Object[][] cardData = {
             {"Viaturas",viaturas.size(),new Color(100,180,255)},
@@ -1071,7 +1086,7 @@ public class MainView extends JFrame {
         p.add(cards,BorderLayout.NORTH);
 
         // ---- Graficos ----
-        JPanel graficos=new JPanel(new GridLayout(2,3,10,10));graficos.setOpaque(false);
+        JPanel graficos=new JPanel(new GridLayout(2,4,10,10));graficos.setOpaque(false);graficos.setPreferredSize(new Dimension(0,700));
 
         // 1. Pizza: Situacao Viaturas
         graficos.add(graficoPizza("Situa\u00e7\u00e3o das Viaturas",
@@ -1097,11 +1112,11 @@ public class MainView extends JFrame {
         // 5. Barras: Acidentes por Ano
         graficos.add(graficoBarras("Acidentes por Ano", dAcid, new Color(255,100,80)));
 
+        // 7. Barras: Valor Convenios Ativos por Participe
+        graficos.add(graficoBarrasDouble("Conv\u00eanios Ativos - Valor (R$)", dConvVal, new Color(255,220,50)));
+
         // 6. Pizza: Servicos por Status
-        graficos.add(graficoPizza("Servi\u00e7os Realizados",
-            new String[]{"Conclu\u00eddo","Em andamento","Aguardando"},
-            dServicos,
-            new Color[]{new Color(48,209,88),new Color(255,159,10),new Color(255,69,58)}));
+        graficos.add(graficoPizza("Servi\u00e7os Realizados",new String[]{"Conclu\u00eddo","Em andamento","Aguardando"},dServicos,new Color[]{new Color(48,209,88),new Color(255,159,10),new Color(255,69,58)}));
 
         p.add(graficos,BorderLayout.CENTER);
 
@@ -1117,20 +1132,29 @@ public class MainView extends JFrame {
 
     private JPanel graficoPizza(String titulo, String[] labels, int[] vals, Color[] cores) {
         return new JPanel(){
-            {setOpaque(false);setPreferredSize(new Dimension(0,220));}
+            {setOpaque(false);setPreferredSize(new Dimension(340,280));}
             @Override protected void paintComponent(Graphics g){
                 super.paintComponent(g);
                 Graphics2D g2=(Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(AppTheme.COR_SUPERFICIE);g2.fillRoundRect(0,0,getWidth(),getHeight(),14,14);
                 g2.setColor(new Color(60,60,65));g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,14,14);
-                g2.setColor(Color.WHITE);g2.setFont(new Font("Segoe UI",Font.BOLD,13));
+                g2.setColor(Color.WHITE);g2.setFont(new Font("Segoe UI",Font.BOLD,14));
                 FontMetrics fm=g2.getFontMetrics();
                 g2.drawString(titulo,(getWidth()-fm.stringWidth(titulo))/2,22);
                 int total=0;for(int v:vals)total+=v;
                 if(total==0){g2.setColor(AppTheme.COR_TEXTO_SEC);g2.setFont(new Font("Segoe UI",Font.PLAIN,12));g2.drawString("Sem dados",(getWidth()-60)/2,getHeight()/2);g2.dispose();return;}
-                int sz=Math.min(getWidth()-120,getHeight()-70);sz=Math.max(sz,60);
-                int px=(getWidth()-sz)/2-30,py=30;
+                int margin=18;
+                int titleHeight=32;
+                int availableWidth=getWidth()-margin*2;
+                int availableHeight=getHeight()-titleHeight-margin-10;
+                // Calcula tamanho da pizza considerando espaço para legenda
+                int sz=Math.min(availableWidth-150, availableHeight-20);
+                sz=Math.max(sz,80);
+                int px=margin+5, py=titleHeight+5;
+                // Legenda sempre à direita
+                int lx=px+sz+18;
+                int ly=py+15;
                 double ang=0;
                 for(int i=0;i<vals.length;i++){
                     if(vals[i]==0)continue;
@@ -1141,53 +1165,159 @@ public class MainView extends JFrame {
                     g2.drawArc(px,py,sz,sz,(int)ang,(int)sweep);
                     ang+=sweep;
                 }
-                // Legenda
-                int lx=px+sz+10,ly=py+10;
-                g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
+                // Legenda com fonte menor e espaçamento ajustado
+                g2.setFont(new Font("Segoe UI",Font.BOLD,11));
+                FontMetrics fmLeg=g2.getFontMetrics();
                 for(int i=0;i<labels.length;i++){
                     if(i>=vals.length)break;
-                    g2.setColor(cores[i%cores.length]);g2.fillRoundRect(lx,ly+i*18,10,10,3,3);
-                    g2.setColor(AppTheme.COR_TEXTO);g2.drawString(labels[i]+" ("+vals[i]+")",lx+14,ly+i*18+9);
+                    int yPos=ly+i*20;
+                    // Verifica se a legenda cabe dentro do painel
+                    if(yPos+12>getHeight()-margin) break;
+                    g2.setColor(cores[i%cores.length]);g2.fillRoundRect(lx,yPos,10,10,3,3);
+                    g2.setColor(AppTheme.COR_TEXTO);
+                    String text=labels[i]+" ("+vals[i]+")";
+                    // Trunca texto se muito longo
+                    int maxWidth=getWidth()-lx-margin-14;
+                    while(fmLeg.stringWidth(text)>maxWidth && text.length()>8){
+                        text=text.substring(0,text.lastIndexOf(' ')>0?text.lastIndexOf(' '):text.length()-4)+"..";
+                    }
+                    g2.drawString(text,lx+14,yPos+9);
                 }
                 g2.dispose();
             }
         };
     }
 
-    private JPanel graficoBarras(String titulo, java.util.Map<String,Integer> dados, Color cor) {
+    private JPanel graficoBarrasDouble(String titulo, java.util.Map<String,Double> dados, Color cor) {
+        java.util.Map<String,Integer> intMap=new java.util.LinkedHashMap<>();
+        for(java.util.Map.Entry<String,Double> e:dados.entrySet()) intMap.put(e.getKey(),(int)(e.getValue()/1000));
         return new JPanel(){
-            {setOpaque(false);}
+            {setOpaque(false);setPreferredSize(new Dimension(340,280));}
             @Override protected void paintComponent(Graphics g){
                 super.paintComponent(g);
                 Graphics2D g2=(Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(AppTheme.COR_SUPERFICIE);g2.fillRoundRect(0,0,getWidth(),getHeight(),14,14);
                 g2.setColor(new Color(60,60,65));g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,14,14);
-                g2.setColor(Color.WHITE);g2.setFont(new Font("Segoe UI",Font.BOLD,13));
+                g2.setColor(Color.WHITE);g2.setFont(new Font("Segoe UI",Font.BOLD,14));
+                FontMetrics fm=g2.getFontMetrics();
+                g2.drawString(titulo,(getWidth()-fm.stringWidth(titulo))/2,22);
+                if(intMap.isEmpty()){g2.setColor(AppTheme.COR_TEXTO_SEC);g2.setFont(new Font("Segoe UI",Font.PLAIN,12));g2.drawString("Sem dados",(getWidth()-60)/2,getHeight()/2);g2.dispose();return;}
+                int mE=18,mB=65,mT=38,mD=18;
+                int wP=getWidth()-mE-mD,hP=getHeight()-mT-mB;
+                int max=intMap.values().stream().mapToInt(Integer::intValue).max().orElse(1);
+                String[] keys=intMap.keySet().toArray(new String[0]);
+                int n=keys.length;
+                int bW=Math.max(18,(wP/n)-10);
+                g2.setFont(new Font("Segoe UI",Font.BOLD,10));
+                FontMetrics fm2=g2.getFontMetrics();
+                for(int i=0;i<n;i++){
+                    int v=intMap.get(keys[i]);
+                    int bH=Math.max(4,(int)((v/(double)max)*(hP-25)));
+                    int x=mE+i*(wP/n)+(wP/n-bW)/2;
+                    int y=mT+hP-bH;
+                    g2.setPaint(new GradientPaint(x,y,cor.brighter(),x,y+bH,cor.darker()));
+                    g2.fillRoundRect(x,y,bW,bH,4,4);
+                    g2.setColor(Color.WHITE);
+                    String sv=v+"k";
+                    int svW=fm2.stringWidth(sv);
+                    // Posiciona valor acima da barra, dentro da área do gráfico
+                    int labelY=Math.max(y-4,mT+12);
+                    g2.drawString(sv,x+(bW-svW)/2,labelY);
+                    g2.setColor(AppTheme.COR_TEXTO_SEC);
+                    g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
+                    FontMetrics fm3=g2.getFontMetrics();
+                    String lbl=keys[i];
+                    int maxLblW=wP/n-4;
+                    while(fm3.stringWidth(lbl)>maxLblW && lbl.length()>3) lbl=lbl.substring(0,lbl.length()-1);
+                    if(!lbl.equals(keys[i]) && lbl.length()>2) lbl=lbl.substring(0,lbl.length()-1)+".";
+                    java.awt.geom.AffineTransform orig=g2.getTransform();
+                    int cx=x+bW/2; int cy=mT+hP+12;
+                    g2.rotate(-Math.PI/5.5,cx,cy);
+                    g2.drawString(lbl,cx-fm3.stringWidth(lbl)/2,cy+fm3.getAscent()/2);
+                    g2.setTransform(orig);
+                    g2.setFont(new Font("Segoe UI",Font.BOLD,10));
+                }
+                g2.dispose();
+            }
+        };
+    }
+
+    private void exportarCSV(JTable tabela, String nomeArquivo) {
+        JFileChooser fc=new JFileChooser();
+        fc.setDialogTitle("Salvar CSV");
+        fc.setSelectedFile(new java.io.File(nomeArquivo+".csv"));
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV (*.csv)","csv"));
+        if(fc.showSaveDialog(this)!=JFileChooser.APPROVE_OPTION) return;
+        java.io.File f=fc.getSelectedFile();
+        if(!f.getName().toLowerCase().endsWith(".csv")) f=new java.io.File(f.getAbsolutePath()+".csv");
+        try(java.io.PrintWriter pw=new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(f),"UTF-8"))){
+            pw.write('\uFEFF'); // BOM para Excel reconhecer UTF-8
+            javax.swing.table.TableModel m=tabela.getModel();
+            StringBuilder sb=new StringBuilder();
+            for(int c=0;c<m.getColumnCount();c++){if(c>0)sb.append(";");sb.append('"').append(m.getColumnName(c).replace("\"","\"\"")).append('"');}
+            pw.println(sb);
+            for(int r=0;r<m.getRowCount();r++){
+                sb=new StringBuilder();
+                for(int c=0;c<m.getColumnCount();c++){
+                    if(c>0)sb.append(";");
+                    Object v=m.getValueAt(r,c);
+                    String s=v!=null?v.toString():"";
+                    sb.append('"').append(s.replace("\"","\"\"")).append('"');
+                }
+                pw.println(sb);
+            }
+            JOptionPane.showMessageDialog(this,"CSV salvo em:\n"+f.getAbsolutePath()+"\n\nVoce pode enviar este arquivo pelo WhatsApp.","Exportado",JOptionPane.INFORMATION_MESSAGE);
+        }catch(Exception ex){erro("Erro ao exportar: "+ex.getMessage());}
+    }
+
+    private JPanel graficoBarras(String titulo, java.util.Map<String,Integer> dados, Color cor) {
+        return new JPanel(){
+            {setOpaque(false);setPreferredSize(new Dimension(340,280));}
+            @Override protected void paintComponent(Graphics g){
+                super.paintComponent(g);
+                Graphics2D g2=(Graphics2D)g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(AppTheme.COR_SUPERFICIE);g2.fillRoundRect(0,0,getWidth(),getHeight(),14,14);
+                g2.setColor(new Color(60,60,65));g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,14,14);
+                g2.setColor(Color.WHITE);g2.setFont(new Font("Segoe UI",Font.BOLD,14));
                 FontMetrics fm=g2.getFontMetrics();
                 g2.drawString(titulo,(getWidth()-fm.stringWidth(titulo))/2,22);
                 if(dados.isEmpty()){g2.setColor(AppTheme.COR_TEXTO_SEC);g2.setFont(new Font("Segoe UI",Font.PLAIN,12));g2.drawString("Sem dados",(getWidth()-60)/2,getHeight()/2);g2.dispose();return;}
-                int mE=10,mB=40,mT=35,mD=10;
+                int mE=18,mB=65,mT=38,mD=18;
                 int wP=getWidth()-mE-mD,hP=getHeight()-mT-mB;
                 int max=dados.values().stream().mapToInt(Integer::intValue).max().orElse(1);
                 String[] keys=dados.keySet().toArray(new String[0]);
                 int n=keys.length;
-                int bW=Math.max(8,(wP/n)-6);
-                g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
+                int bW=Math.max(18,(wP/n)-10);
+                g2.setFont(new Font("Segoe UI",Font.BOLD,10));
+                FontMetrics fm2=g2.getFontMetrics();
                 for(int i=0;i<n;i++){
                     int v=dados.get(keys[i]);
-                    int bH=Math.max(2,(int)((v/(double)max)*hP));
+                    int bH=Math.max(4,(int)((v/(double)max)*(hP-25)));
                     int x=mE+i*(wP/n)+(wP/n-bW)/2;
                     int y=mT+hP-bH;
                     g2.setPaint(new GradientPaint(x,y,cor.brighter(),x,y+bH,cor.darker()));
                     g2.fillRoundRect(x,y,bW,bH,4,4);
                     g2.setColor(Color.WHITE);
                     String sv=String.valueOf(v);
-                    FontMetrics fm2=g2.getFontMetrics();
-                    g2.drawString(sv,x+(bW-fm2.stringWidth(sv))/2,y-3);
+                    int svW=fm2.stringWidth(sv);
+                    // Posiciona valor acima da barra, dentro da área do gráfico
+                    int labelY=Math.max(y-4,mT+12);
+                    g2.drawString(sv,x+(bW-svW)/2,labelY);
                     g2.setColor(AppTheme.COR_TEXTO_SEC);
-                    String lbl=keys[i].length()>8?keys[i].substring(0,7)+"..":keys[i];
-                    g2.drawString(lbl,x+(bW-fm2.stringWidth(lbl))/2,mT+hP+14);
+                    g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
+                    FontMetrics fm3=g2.getFontMetrics();
+                    String lbl=keys[i];
+                    int maxLblW=wP/n-4;
+                    while(fm3.stringWidth(lbl)>maxLblW && lbl.length()>3) lbl=lbl.substring(0,lbl.length()-1);
+                    if(!lbl.equals(keys[i]) && lbl.length()>2) lbl=lbl.substring(0,lbl.length()-1)+".";
+                    java.awt.geom.AffineTransform orig=g2.getTransform();
+                    int cx=x+bW/2; int cy=mT+hP+12;
+                    g2.rotate(-Math.PI/5.5,cx,cy);
+                    g2.drawString(lbl,cx-fm3.stringWidth(lbl)/2,cy+fm3.getAscent()/2);
+                    g2.setTransform(orig);
+                    g2.setFont(new Font("Segoe UI",Font.BOLD,10));
                 }
                 g2.dispose();
             }

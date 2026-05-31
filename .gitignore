@@ -1,0 +1,73 @@
+# ===========================
+# Java / Maven - Arquivos compilados
+# ===========================
+target/
+*.class
+
+# ===========================
+# Binários e JDK local (muito grandes)
+# ===========================
+jdk17/
+maven/
+
+# Diretórios de compilação temporária externos
+com/
+
+# ===========================
+# Banco de dados / Arquivos de runtime
+# ===========================
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================
+# Arquivos sensíveis - NUNCA COMMITAR
+# ===========================
+senha.txt
+*.env
+*.properties.local
+secrets.*
+config.local.*
+
+# ===========================
+# IDEs e Editores
+# ===========================
+.kiro/
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.classpath
+.project
+.settings/
+bin/
+
+# ===========================
+# Sistema Operacional
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ===========================
+# Temporários
+# ===========================
+*.tmp
+*.bak
+*.swp
+*~
+fix.py
+
+# ===========================
+# Arquivos de documentação/out antigos
+# ===========================
+documentacao.txt
+
+# ===========================
+# NOTA: JARs de dependência (mysql-connector, sqlite-jdbc, slf4j-stub, BBM-Gerenciamento)
+# sao commitados pois o projeto não usa repositório Maven remoto para build local.
+# ===========================

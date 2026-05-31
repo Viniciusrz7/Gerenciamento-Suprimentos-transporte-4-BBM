@@ -31,11 +31,15 @@ public class GenericDao<T> {
 
     protected Connection getConnection() throws SQLException {
         try {
-            Class.forName("org.sqlite.JDBC");
+            Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
             throw new SQLException(e);
         }
-        return DriverManager.getConnection("jdbc:sqlite:bbm4.db");
+        return DriverManager.getConnection(
+            "jdbc:mysql://10.15.82.36:3306/bbm4?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo&characterEncoding=UTF-8",
+            "admin_bombeiros",
+            "Supri.4bbm"
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -53,32 +57,29 @@ public class GenericDao<T> {
             f.setAccessible(true);
 
             if (f.isAnnotationPresent(ManyToOne.class)) {
-                // FK: <campo>_id INTEGER
-                cols.add(f.getName() + "_id INTEGER");
+                cols.add(f.getName() + "_id BIGINT");
                 continue;
             }
 
             StringBuilder col = new StringBuilder(f.getName()).append(" ");
 
             Class<?> type = f.getType();
-            if (type == Long.class || type == long.class
+            if (f.isAnnotationPresent(Id.class)) {
+                col.append("BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+            } else if (type == Long.class || type == long.class
                     || type == Integer.class || type == int.class) {
-                col.append("INTEGER");
+                col.append("BIGINT");
             } else if (type == Double.class || type == double.class
                     || type == Float.class || type == float.class) {
-                col.append("REAL");
+                col.append("DOUBLE");
             } else {
-                col.append("TEXT");
-            }
-
-            if (f.isAnnotationPresent(Id.class)) {
-                col.append(" PRIMARY KEY AUTOINCREMENT");
+                col.append("LONGTEXT");
             }
 
             cols.add(col.toString());
         }
 
-        sql.append(String.join(", ", cols)).append(")");
+        sql.append(String.join(", ", cols)).append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         try (Connection c = getConnection(); Statement s = c.createStatement()) {
             s.execute(sql.toString());
@@ -131,7 +132,6 @@ public class GenericDao<T> {
             try {
                 Object val = f.get(entity);
                 if (f.isAnnotationPresent(ManyToOne.class)) {
-                    // salva o id do objeto relacionado
                     colNames.add(f.getName() + "_id");
                     values.add(val != null ? extractId(val) : null);
                 } else {
@@ -302,16 +302,15 @@ public class GenericDao<T> {
         } else if (type == java.time.LocalDate.class) {
             f.set(obj, java.time.LocalDate.parse(val));
         } else if (type == java.time.LocalDateTime.class) {
-            f.set(obj, java.time.LocalDateTime.parse(val));
+            // CORREÇÃO AQUI: O MySQL manda com espaço e com '.0' no final, o parse falha
+            String isoVal = val.replace(" ", "T");
+            if (isoVal.endsWith(".0")) isoVal = isoVal.substring(0, isoVal.length() - 2);
+            f.set(obj, java.time.LocalDateTime.parse(isoVal));
         } else {
             f.set(obj, val);
         }
     }
 
-    /**
-     * Carrega um objeto relacionado (@ManyToOne) pelo id usando uma query direta,
-     * sem instanciar outro GenericDao (evita recursão infinita).
-     */
     @SuppressWarnings("unchecked")
     private <R> R loadRelated(Class<R> relatedClass, long id, Connection c) {
         String relatedTable = resolveTableName(relatedClass);
@@ -346,7 +345,12 @@ public class GenericDao<T> {
         else if (type == Double.class || type == double.class) f.set(obj, Double.parseDouble(val));
         else if (type == Boolean.class || type == boolean.class) f.set(obj, Boolean.parseBoolean(val));
         else if (type == java.time.LocalDate.class) f.set(obj, java.time.LocalDate.parse(val));
-        else if (type == java.time.LocalDateTime.class) f.set(obj, java.time.LocalDateTime.parse(val));
+        else if (type == java.time.LocalDateTime.class) {
+            // CORREÇÃO AQUI TAMBÉM
+            String isoVal = val.replace(" ", "T");
+            if (isoVal.endsWith(".0")) isoVal = isoVal.substring(0, isoVal.length() - 2);
+            f.set(obj, java.time.LocalDateTime.parse(isoVal));
+        }
         else f.set(obj, val);
     }
 

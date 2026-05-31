@@ -12,7 +12,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
     }
 
     public Usuario buscarPorLogin(String login) {
-        String sql = "SELECT * FROM usuario WHERE login = ?";
+        String sql = "SELECT * FROM usuarios WHERE login = ?";
         try (Connection c = getConnection(); PreparedStatement p = c.prepareStatement(sql)) {
             p.setString(1, login);
             try (ResultSet r = p.executeQuery()) {
